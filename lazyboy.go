@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"lazyboy/tmpl"
 )
@@ -23,7 +24,7 @@ func tick(path string) {
 func main() {
 	var i interface{}
 	json.Unmarshal([]byte(`{"name":"khs"}`), &i)
-	got, _ := tmpl.Resolve("{{ref \"/name\"}}", i)
+	got, _ := tmpl.Resolve(context.Background(), "{{ref \"/name\"}}", i)
 
 	print(got)
 }

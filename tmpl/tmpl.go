@@ -2,8 +2,11 @@ package tmpl
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
-	"github.com/lestrrat-go/jspointer"
+	"github.com/PaesslerAG/gval"
+	"github.com/PaesslerAG/jsonpath"
+	_ "github.com/PaesslerAG/jsonpath"
 	"log"
 	"text/template"
 )
@@ -23,39 +26,47 @@ Data를 json path로 추출해서 쓰려고 함
 - 근데 이걸 선택하면, json path를 찾는것부터 치환하는것까지 내가 직접 구현해야 해서 크게 이득이 없다.
 
 - 그래서 json reference대신 그냥 template에 jspointer로 개별치환하는 ref 함수를 추가해서 json path로 치환하게 해서 목적을 달성했다.
+- jspointer 대신 jsonpath를 써야겠다. -> 완료
+- jsonpath 문법은 https://goessner.net/articles/JsonPath/ 참고
 
 */
 
-func jsonRef(srcData interface{}, path string) string {
-	p, err := jspointer.New(path)
+func jsonRef(ctx context.Context, srcData interface{}, pathStr string) string {
+	builder := gval.Full(jsonpath.PlaceholderExtension())
+
+	path, err := builder.NewEvaluable(pathStr)
 	if err != nil {
+		log.Println(err)
 		return "null"
 	}
-	got, err := p.Get(srcData)
+	got, err := path(ctx, srcData)
 	if err != nil {
+		log.Println(err)
 		return "null"
 	}
 	m, _ := json.Marshal(got)
 	return string(m)
 }
 
-func Resolve(tmplStr string, srcData interface{}) (string, error) {
+func Resolve(ctx context.Context, tmplStr string, srcData interface{}) (string, error) {
 	funcMap := template.FuncMap{
 		"ref": func(path string) string {
-			return jsonRef(srcData, path)
+			return jsonRef(ctx, srcData, path)
 		},
 	}
 
 	// Create a template, add the function map, and parse the text.
-	tmpl, err := template.New("titleTest").Funcs(funcMap).Parse(tmplStr)
+	tmpl, err := template.New("tmpl").Funcs(funcMap).Parse(tmplStr)
 	if err != nil {
 		log.Fatalf("parsing: %s", err)
+		return "", err
 	}
 
 	var tpl bytes.Buffer
 	err = tmpl.Execute(&tpl, nil)
 	if err != nil {
 		log.Fatalf("execution: %s", err)
+		return "", err
 	}
 	return tpl.String(), nil
 }

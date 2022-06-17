@@ -30,6 +30,6 @@ func (conf *QueueConfig) BuildRequest(request HttpRequest) (*http.Request, error
 	return nil, nil
 }
 
-func (conf *QueueConfig) ParseResponse(response http.Response) (HttpResponse, error) {
+func (conf *QueueConfig) ParseResponse(response *http.Response) (HttpResponse, error) {
 	return HttpResponse{}, nil
 }

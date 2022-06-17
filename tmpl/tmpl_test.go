@@ -1,7 +1,6 @@
 package tmpl
 
 import (
-	"context"
 	"encoding/json"
 	"log"
 	"reflect"
@@ -39,33 +38,33 @@ func TestResolve(t *testing.T) {
 		}, want: obj([]byte(`{"name":"khs"}`))},
 
 		{name: "ref1", args: args{
-			tmpl:    `{"name":{{ref "$.username"}}}`,
+			tmpl:    `{"name": #{ $.username } }`,
 			srcData: obj([]byte(`{"username":"khs"}`)),
 		}, want: obj([]byte(`{"name":"khs"}`))},
 
 		{name: "ref2", args: args{
-			tmpl:    `{"name":{{ref "$.username"}}}`,
+			tmpl:    `{"name":#{$.username}}`,
 			srcData: obj([]byte(`{"username":{"given":"hs","family":"k"}}`)),
 		}, want: obj([]byte(`{"name":{"given":"hs","family":"k"}}`))},
 
 		{name: "ref3", args: args{
-			tmpl:    `{"first":{{ref "$.username.given"}},"last":{{ref "$.username.family"}}}`,
+			tmpl:    `{"first":#{$.username.given},"last":#{$.username.family}}`,
 			srcData: obj([]byte(`{"username":{"given":"hs","family":"k"}}`)),
 		}, want: obj([]byte(`{"first":"hs","last":"k"}`))},
 
 		{name: "refarr", args: args{
-			tmpl:    `{"full":{{ref "$.username"}}}`,
+			tmpl:    `{"full":#{$.username}}`,
 			srcData: obj([]byte(`{"username":{"given":"hs","family":"k"}}`)),
 		}, want: obj([]byte(`{"full":{"given":"hs","family":"k"}}`))},
 
 		{name: "ref-non", args: args{
-			tmpl:    `{"first":{{ref "$.username.given"}},"last":{{ref "$.username.family"}}}`,
+			tmpl:    `{"first":#{$.username.given},"last":#{$.username.family}}`,
 			srcData: obj([]byte(`{"username":{"family":"k"}}`)),
 		},
 			want: obj([]byte(`{"first":null,"last":"k"}`)),
 		},
 		{name: "ref-multi", args: args{
-			tmpl:    `{"givens":{{ref "$..given"}}}`,
+			tmpl:    `{"givens":#{$..given}}`,
 			srcData: obj([]byte(`[{"username":{"given":"hs","family":"k"}},{"username":{"given":"hanson","family":"k"}}]`)),
 		},
 			want: obj([]byte(`{"givens":["hs","hanson"]}`)),
@@ -73,13 +72,38 @@ func TestResolve(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := Resolve(context.Background(), tt.args.tmpl, tt.args.srcData)
+			tmpl, _ := NewTemplate(tt.args.tmpl)
+			got, err := ResolveTemplate(tmpl, tt.args.srcData)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Resolve() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(obj([]byte(got)), tt.want) {
 				t.Errorf("Resolve() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestTransTemplate(t *testing.T) {
+	type args struct {
+		tmplStr string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{name: "trans", args: args{"123"}, want: "123"},
+		{name: "trans", args: args{`123 #{ 1 } 456`}, want: `123 {{ref . "1"}} 456`},
+		{name: "trans", args: args{`123 #{ 1} 456`}, want: `123 {{ref . "1"}} 456`},
+		{name: "trans", args: args{`#{1}`}, want: `{{ref . "1"}}`},
+		{name: "trans", args: args{`#{1}`}, want: `{{ref . "1"}}`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := TransTemplate(tt.args.tmplStr); got != tt.want {
+				t.Errorf("TransTemplate() = %v, want %v", got, tt.want)
 			}
 		})
 	}

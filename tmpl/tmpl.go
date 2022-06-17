@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"github.com/PaesslerAG/gval"
 	"github.com/PaesslerAG/jsonpath"
-	_ "github.com/PaesslerAG/jsonpath"
 	"log"
+	"regexp"
 	"text/template"
 )
 
@@ -31,15 +31,15 @@ Data를 json path로 추출해서 쓰려고 함
 
 */
 
-func jsonRef(ctx context.Context, srcData interface{}, pathStr string) string {
-	builder := gval.Full(jsonpath.PlaceholderExtension())
+var builder = gval.Full(jsonpath.PlaceholderExtension())
 
+func jsonRef(tmplData interface{}, pathStr string) string {
 	path, err := builder.NewEvaluable(pathStr)
 	if err != nil {
 		log.Println(err)
 		return "null"
 	}
-	got, err := path(ctx, srcData)
+	got, err := path(context.Background(), tmplData)
 	if err != nil {
 		log.Println(err)
 		return "null"
@@ -48,25 +48,30 @@ func jsonRef(ctx context.Context, srcData interface{}, pathStr string) string {
 	return string(m)
 }
 
-func Resolve(ctx context.Context, tmplStr string, srcData interface{}) (string, error) {
-	funcMap := template.FuncMap{
-		"ref": func(path string) string {
-			return jsonRef(ctx, srcData, path)
-		},
-	}
+func TransTemplate(tmplStr string) string {
+	compile, _ := regexp.Compile(`#\{\s*(.+?)\s*}`) // "#{ jsonpath }"
+	tmplStr2 := compile.ReplaceAllString(tmplStr, `{{ref . "$1"}}`)
+	return tmplStr2
+}
 
-	// Create a template, add the function map, and parse the text.
-	tmpl, err := template.New("tmpl").Funcs(funcMap).Parse(tmplStr)
+func NewTemplate(tmplStr string) (*template.Template, error) {
+	funcMap := template.FuncMap{
+		"ref": jsonRef,
+	}
+	tmpl, err := template.New("tmpl").Funcs(funcMap).Parse(TransTemplate(tmplStr))
 	if err != nil {
 		log.Fatalf("parsing: %s", err)
-		return "", err
+		return nil, err
 	}
+	return tmpl, nil
+}
 
-	var tpl bytes.Buffer
-	err = tmpl.Execute(&tpl, nil)
+func ResolveTemplate(tmpl *template.Template, srcData interface{}) (string, error) {
+	var outbuf bytes.Buffer
+	err := tmpl.Execute(&outbuf, srcData)
 	if err != nil {
 		log.Fatalf("execution: %s", err)
 		return "", err
 	}
-	return tpl.String(), nil
+	return outbuf.String(), nil
 }

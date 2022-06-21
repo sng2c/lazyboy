@@ -102,8 +102,8 @@ func TestTransTemplate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := TransTemplate(tt.args.tmplStr); got != tt.want {
-				t.Errorf("TransTemplate() = %v, want %v", got, tt.want)
+			if got := transTemplate(tt.args.tmplStr); got != tt.want {
+				t.Errorf("transTemplate() = %v, want %v", got, tt.want)
 			}
 		})
 	}

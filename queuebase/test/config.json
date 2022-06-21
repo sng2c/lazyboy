@@ -1,6 +1,0 @@
-{
-  "TakePerTick": 3,
-  "Correction": 1.0,
-  "RequestTemplate" : {"guid": {"$ref": "data#/guid"}},
-  "ResponseTemplate" : {}
-}

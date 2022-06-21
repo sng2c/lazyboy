@@ -48,7 +48,7 @@ func jsonRef(tmplData interface{}, pathStr string) string {
 	return string(m)
 }
 
-func TransTemplate(tmplStr string) string {
+func transTemplate(tmplStr string) string {
 	compile, _ := regexp.Compile(`#\{\s*(.+?)\s*}`) // "#{ jsonpath }"
 	tmplStr2 := compile.ReplaceAllString(tmplStr, `{{ref . "$1"}}`)
 	return tmplStr2
@@ -58,7 +58,7 @@ func NewTemplate(tmplStr string) (*template.Template, error) {
 	funcMap := template.FuncMap{
 		"ref": jsonRef,
 	}
-	tmpl, err := template.New("tmpl").Funcs(funcMap).Parse(TransTemplate(tmplStr))
+	tmpl, err := template.New("tmpl").Funcs(funcMap).Parse(transTemplate(tmplStr))
 	if err != nil {
 		log.Fatalf("parsing: %s", err)
 		return nil, err

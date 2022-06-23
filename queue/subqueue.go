@@ -52,7 +52,20 @@ func NewSubQueue(queuePath, queueName string) (*SubQueue, error) {
 			subq.SyncPos()
 		}
 	}
+
 	return &subq, nil
+}
+
+func (subq *SubQueue) IsEOF() bool {
+	subqPath := path.Join(subq.QueuePath, subq.SubQueueName)
+	stat, err := os.Stat(subqPath)
+	if os.IsNotExist(err) {
+		return true
+	}
+	if stat.Size() <= subq.Pos.Offset {
+		return true
+	}
+	return false
 }
 
 func (subq *SubQueue) SyncPos() error {
@@ -82,15 +95,26 @@ func (subq *SubQueue) Take(n int) [][]byte {
 	var taken = make([][]byte, 0)
 
 	rd := bufio.NewReader(file)
+
+	// Take후에는 반드시 싱크
+	defer func(q *SubQueue) {
+		log.Println("Sync", subq)
+		err := q.SyncPos()
+		if err != nil {
+			log.Println(err)
+		}
+	}(subq)
+
 	var hasRead int64
 	for i := 0; i < n; i++ {
 		bytes, err := rd.ReadBytes('\n')
 		if err != nil {
-			subq.Pos.HasError = true
-			subq.Pos.LastError = err.Error()
-			if errors.Is(io.EOF, err) { // TODO EOF를 에러로 처리하지 않고, file size <=> offset 으로 offer하게 변경할 것
+
+			if errors.Is(io.EOF, err) { // err이 있더라도 bytes는 채워져있음
 				log.Println("Take EOF")
 			} else {
+				subq.Pos.HasError = true
+				subq.Pos.LastError = err.Error()
 				log.Println(err)
 				return nil
 			}
@@ -110,16 +134,6 @@ func (subq *SubQueue) Take(n int) [][]byte {
 		}
 	}
 	subq.Pos.Offset += hasRead
-
-	log.Println(subq)
-
-	// Takeㅎㅜ에는 반드시 싱크
-	defer func(q *SubQueue) {
-		err := q.SyncPos()
-		if err != nil {
-			log.Println(err)
-		}
-	}(subq)
 
 	return taken
 }
@@ -145,6 +159,10 @@ func OfferSubQueue(queuePath string) (*SubQueue, error) {
 		}
 		if subq.Pos.HasError {
 			log.Println("Skip by LastError", subq.Pos.LastError)
+			continue
+		}
+		if subq.IsEOF() {
+			log.Println("Skip by EOF")
 			continue
 		}
 		targets = append(targets, subq)

@@ -1,6 +1,8 @@
 package queue
 
 import (
+	"log"
+	"os"
 	"path"
 	"reflect"
 	"testing"
@@ -130,6 +132,41 @@ func TestSubQueue_Take(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			subq, _ := NewSubQueue(tt.fields.QueuePath, tt.fields.SubQueueName)
+			if got := subq.Take(tt.args.n); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Take() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+
+	filename := path.Join(testBase, "subqueue_take_test1", "data2.jsonl")
+	file, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0)
+	if err != nil {
+		log.Println(err)
+	}
+	file.Write([]byte("3\n"))
+	file.Close()
+	cont, _ := os.ReadFile(filename)
+	log.Println(cont)
+
+	tests2 := []struct {
+		name   string
+		fields fields
+		args   args
+		want   [][]byte
+	}{
+		{
+			name: "data2",
+			fields: fields{
+				QueuePath:    path.Join(testBase, "subqueue_take_test1"),
+				SubQueueName: "data2.jsonl",
+			},
+			args: args{4},
+			want: [][]byte{[]byte("3")},
+		},
+	}
+	for _, tt := range tests2 {
 		t.Run(tt.name, func(t *testing.T) {
 			subq, _ := NewSubQueue(tt.fields.QueuePath, tt.fields.SubQueueName)
 			if got := subq.Take(tt.args.n); !reflect.DeepEqual(got, tt.want) {

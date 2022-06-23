@@ -11,7 +11,7 @@ import (
 )
 
 type Queue struct {
-	TakePerTick      uint64
+	TakePerTick      int
 	Correction       float64
 	QueuePath        string `json:"-"`
 	ReqTmplFilename  string
@@ -72,18 +72,19 @@ func (q *Queue) Init() error {
 	return nil
 }
 
-func (q *Queue) Take(n int) [][]byte {
-	var gTaken [][]byte
-	left := n
-	for left > 0 {
+func (q *Queue) Take() [][]byte {
+	var gTaken = make([][]byte, 0)
+	var want = int(float64(q.TakePerTick) * q.Correction)
+	for want > 0 {
 		queue, err := OfferSubQueue(q.QueuePath)
 		if err != nil {
-			log.Println(err)
+			log.Println("no more data.", err)
 			break
 		}
 
-		taken := queue.Take(left)
+		taken := queue.Take(want)
 		if taken != nil {
+			want -= len(taken)
 			for _, b := range taken {
 				gTaken = append(gTaken, b)
 			}

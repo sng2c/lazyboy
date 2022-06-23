@@ -3,6 +3,7 @@ package queue
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"io"
 	"log"
 	"os"
@@ -32,15 +33,23 @@ func NewSubQueue(queuePath, queueName string) (*SubQueue, error) {
 		},
 	}
 
+	subqPath := path.Join(subq.QueuePath, subq.SubQueueName)
+	_, err := os.Stat(subqPath)
+	if os.IsNotExist(err) {
+		log.Println("No subq", err)
+	}
+
 	// Init pos
 	posPath := path.Join(subq.QueuePath, subq.SubQueueName+".pos")
 	posData, err := os.ReadFile(posPath)
 	if os.IsNotExist(err) {
-		log.Println("pos file does not exist. Use default")
+		log.Println("Use default Pos. " + err.Error())
+		subq.SyncPos()
 	} else {
 		err = json.Unmarshal(posData, &subq.Pos)
 		if err != nil {
-			log.Println("pos file is not valid. Use default")
+			log.Println("Use default Pos. " + err.Error())
+			subq.SyncPos()
 		}
 	}
 	return &subq, nil
@@ -70,24 +79,39 @@ func (subq *SubQueue) Take(n int) [][]byte {
 		subq.Pos.LastError = err.Error()
 		return nil
 	}
-	var taken [][]byte
-	rd := bufio.NewScanner(file)
+	var taken = make([][]byte, 0)
+
+	rd := bufio.NewReader(file)
+	var hasRead int64
 	for i := 0; i < n; i++ {
-		if rd.Scan() {
-			taken = append(taken, rd.Bytes())
-		} else {
-			if rd.Err() != nil {
-				subq.Pos.HasError = true
-				subq.Pos.LastError = err.Error()
-				return nil
+		bytes, err := rd.ReadBytes('\n')
+		if err != nil {
+			subq.Pos.HasError = true
+			subq.Pos.LastError = err.Error()
+			if errors.Is(io.EOF, err) { // TODO EOF를 에러로 처리하지 않고, file size <=> offset 으로 offer하게 변경할 것
+				log.Println("Take EOF")
 			} else {
-				subq.Pos.HasError = true
-				subq.Pos.LastError = io.EOF.Error()
+				log.Println(err)
+				return nil
 			}
 		}
+		hasRead += int64(len(bytes))
+		if len(bytes) > 0 && bytes[len(bytes)-1] == '\n' {
+			bytes = bytes[:len(bytes)-1]
+		}
+		if len(bytes) > 0 && bytes[len(bytes)-1] == '\r' {
+			bytes = bytes[:len(bytes)-1]
+		}
+		if len(bytes) > 0 {
+			taken = append(taken, bytes)
+		}
+		if subq.Pos.HasError {
+			break
+		}
 	}
+	subq.Pos.Offset += hasRead
 
-	subq.Pos.Offset, _ = file.Seek(0, io.SeekCurrent)
+	log.Println(subq)
 
 	// Takeㅎㅜ에는 반드시 싱크
 	defer func(q *SubQueue) {
@@ -111,10 +135,7 @@ func OfferSubQueue(queuePath string) (*SubQueue, error) {
 		if d.IsDir() {
 			continue
 		}
-		if strings.HasPrefix(d.Name(), "_") {
-			continue
-		}
-		if strings.HasSuffix(d.Name(), ".pos") {
+		if !strings.HasSuffix(d.Name(), ".jsonl") {
 			continue
 		}
 		// 정합성 체크를 여기서 끝낸다.

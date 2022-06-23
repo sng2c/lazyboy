@@ -2,6 +2,7 @@ package queue
 
 import (
 	"lazyboy/tmpl"
+	"path"
 	"reflect"
 	"testing"
 	"text/template"
@@ -21,11 +22,11 @@ func TestNewQueueFromConfigPath(t *testing.T) {
 		want    *Queue
 		wantErr bool
 	}{
-		{name: "queue_test1", args: args{configPath: "../test/queue_test1/queue1/_config.json"},
+		{name: "queue_test1", args: args{configPath: path.Join(testBase, "queue_test1", "queue1", "_config.json")},
 			want: &Queue{
 				TakePerTick:     3,
 				Correction:      1.0,
-				QueuePath:       "../test/queue_test1/queue1",
+				QueuePath:       path.Join(testBase, "queue_test1", "queue1"),
 				ReqTmplFilename: "_req.json",
 				ResTmplFilename: "_res.json",
 				ReqTmplString:   "{\n  \"name\": #{name}\n}",
@@ -60,7 +61,6 @@ func TestQueue_Take(t *testing.T) {
 		Queue *Queue
 	}
 	type args struct {
-		n int
 	}
 	tests := []struct {
 		name   string
@@ -68,8 +68,20 @@ func TestQueue_Take(t *testing.T) {
 		args   args
 		want   [][]byte
 	}{
-		{name: "take_test1", fields: fields{newQueue("../test/queue_take_test1/queue1/_config.json")},
-			args: args{n: 1}, want: [][]byte{}},
+		{name: "take_test1", fields: fields{newQueue(path.Join(testBase, "queue_take_test1", "queue1", "_config.json"))},
+			args: args{},
+			want: [][]byte{
+				[]byte("0"),
+				[]byte("1"),
+				[]byte("2"),
+			}},
+		{name: "take_test1", fields: fields{newQueue(path.Join(testBase, "queue_take_test1", "queue1", "_config.json"))},
+			args: args{},
+			want: [][]byte{
+				[]byte("3"),
+				[]byte("4"),
+				[]byte("5"),
+			}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -77,8 +89,8 @@ func TestQueue_Take(t *testing.T) {
 			if q == nil {
 				t.Errorf("Queue failed construction")
 			}
-			if got := q.Take(tt.args.n); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Take() = %v, want %v", got, tt.want)
+			if got := q.Take(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Take() = \n%v, \nwant \n%v", got, tt.want)
 			}
 		})
 	}

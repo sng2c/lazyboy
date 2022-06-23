@@ -1,21 +1,11 @@
 package queue
 
 import (
-	"log"
-	"os"
 	"path"
 	"reflect"
 	"testing"
 )
 
-func TestMain(m *testing.M) {
-	//setup()
-	log.Println(">>>>>>>>>>>>>>>>>")
-	code := m.Run()
-	//shutdown()
-	log.Println("<<<<<<<<<<<<<<<<<")
-	os.Exit(code)
-}
 func Test_chooseValidDataFilepath(t *testing.T) {
 
 	type args struct {
@@ -27,11 +17,11 @@ func Test_chooseValidDataFilepath(t *testing.T) {
 		want    string
 		wantErr bool
 	}{
-		{name: "choose_test1", args: args{"../test/subqueue_offer_test1"}, want: "../test/subqueue_offer_test1/1.json", wantErr: false},
-		{name: "choose_test2", args: args{"../test/subqueue_offer_test2"}, want: "../test/subqueue_offer_test2/1.json", wantErr: false},
-		{name: "choose_test3", args: args{"../test/subqueue_offer_test3"}, want: "", wantErr: true},
-		{name: "choose_test4", args: args{"../test/subqueue_offer_test4"}, want: "", wantErr: true},
-		{name: "choose_test5", args: args{"../test/subqueue_offer_test5"}, want: "", wantErr: true},
+		{name: "choose_test1", args: args{path.Join(testBase, "subqueue_offer_test1")}, want: path.Join(testBase, "subqueue_offer_test1", "1.jsonl"), wantErr: false},
+		{name: "choose_test2", args: args{path.Join(testBase, "subqueue_offer_test2")}, want: path.Join(testBase, "subqueue_offer_test2", "1.jsonl"), wantErr: false},
+		{name: "choose_test3", args: args{path.Join(testBase, "subqueue_offer_test3")}, want: "", wantErr: true},
+		{name: "choose_test4", args: args{path.Join(testBase, "subqueue_offer_test4")}, want: "", wantErr: true},
+		{name: "choose_test5", args: args{path.Join(testBase, "subqueue_offer_test5")}, want: "", wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -43,7 +33,7 @@ func Test_chooseValidDataFilepath(t *testing.T) {
 			if err == nil {
 				gotPath := path.Join(got.QueuePath, got.SubQueueName)
 				if gotPath != tt.want {
-					t.Errorf("OfferSubQueue() got = %v, want %v", got, tt.want)
+					t.Errorf("OfferSubQueue() got = %v, want %v", gotPath, tt.want)
 				}
 			}
 		})
@@ -56,7 +46,6 @@ func TestSubQueue_Take(t *testing.T) {
 	type fields struct {
 		QueuePath    string
 		SubQueueName string
-		Pos          SubQueuePos
 	}
 	type args struct {
 		n int
@@ -68,14 +57,81 @@ func TestSubQueue_Take(t *testing.T) {
 		want   [][]byte
 	}{
 		// TODO: Add test cases.
+		{
+			name: "data1",
+			fields: fields{
+				QueuePath:    path.Join(testBase, "subqueue_take_test1"),
+				SubQueueName: "data1.jsonl",
+			},
+			args: args{2},
+			want: [][]byte{[]byte(`{"seq": 0}`), []byte(`{"seq": 1}`)},
+		},
+		{
+			name: "data1",
+			fields: fields{
+				QueuePath:    path.Join(testBase, "subqueue_take_test1"),
+				SubQueueName: "data1.jsonl",
+			},
+			args: args{1},
+			want: [][]byte{[]byte(`{"seq": 2}`)},
+		},
+		{
+			name: "data1",
+			fields: fields{
+				QueuePath:    path.Join(testBase, "subqueue_take_test1"),
+				SubQueueName: "data1.jsonl",
+			},
+			args: args{10},
+			want: [][]byte{[]byte(`{"seq": 3}`), []byte(`{"seq": 4}`)},
+		},
+		{
+			name: "data1",
+			fields: fields{
+				QueuePath:    path.Join(testBase, "subqueue_take_test1"),
+				SubQueueName: "data1.jsonl",
+			},
+			args: args{1},
+			want: [][]byte{},
+		},
+		{
+			name: "data2",
+			fields: fields{
+				QueuePath:    path.Join(testBase, "subqueue_take_test1"),
+				SubQueueName: "data2.jsonl",
+			},
+			args: args{3},
+			want: [][]byte{
+				[]byte("0"),
+				[]byte("1"),
+				[]byte("2"),
+			},
+		},
+		{
+			name: "data2",
+			fields: fields{
+				QueuePath:    path.Join(testBase, "subqueue_take_test1"),
+				SubQueueName: "data2.jsonl",
+			},
+			args: args{4},
+			want: [][]byte{},
+		},
+		{
+			name: "data3",
+			fields: fields{
+				QueuePath:    path.Join(testBase, "subqueue_take_test1"),
+				SubQueueName: "data3.jsonl",
+			},
+			args: args{3},
+			want: [][]byte{
+				[]byte("0"),
+				[]byte("1"),
+				[]byte("2"),
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			subq := &SubQueue{
-				QueuePath:    tt.fields.QueuePath,
-				SubQueueName: tt.fields.SubQueueName,
-				Pos:          tt.fields.Pos,
-			}
+			subq, _ := NewSubQueue(tt.fields.QueuePath, tt.fields.SubQueueName)
 			if got := subq.Take(tt.args.n); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Take() = %v, want %v", got, tt.want)
 			}

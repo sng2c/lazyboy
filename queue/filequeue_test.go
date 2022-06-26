@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func Test_chooseValidDataFilepath(t *testing.T) {
+func Test_OfferFileQueue(t *testing.T) {
 
 	type args struct {
 		queuePath string
@@ -19,30 +19,30 @@ func Test_chooseValidDataFilepath(t *testing.T) {
 		want    string
 		wantErr bool
 	}{
-		{name: "choose_test1", args: args{path.Join(testBase, "subqueue_offer_test1")}, want: path.Join(testBase, "subqueue_offer_test1", "1.jsonl"), wantErr: false},
-		{name: "choose_test2", args: args{path.Join(testBase, "subqueue_offer_test2")}, want: path.Join(testBase, "subqueue_offer_test2", "1.jsonl"), wantErr: false},
-		{name: "choose_test3", args: args{path.Join(testBase, "subqueue_offer_test3")}, want: "", wantErr: true},
-		{name: "choose_test4", args: args{path.Join(testBase, "subqueue_offer_test4")}, want: "", wantErr: true},
-		{name: "choose_test5", args: args{path.Join(testBase, "subqueue_offer_test5")}, want: "", wantErr: true},
+		{name: "choose_test1", args: args{path.Join(testBase, "filequeue_offer_test1")}, want: path.Join(testBase, "filequeue_offer_test1", "1.jsonl"), wantErr: false},
+		{name: "choose_test2", args: args{path.Join(testBase, "filequeue_offer_test2")}, want: path.Join(testBase, "filequeue_offer_test2", "1.jsonl"), wantErr: false},
+		{name: "choose_test3", args: args{path.Join(testBase, "filequeue_offer_test3")}, want: "", wantErr: true},
+		{name: "choose_test4", args: args{path.Join(testBase, "filequeue_offer_test4")}, want: "", wantErr: true},
+		{name: "choose_test5", args: args{path.Join(testBase, "filequeue_offer_test5")}, want: "", wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := OfferSubQueue(tt.args.queuePath)
+			got, err := OfferFileQueue(tt.args.queuePath)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("OfferSubQueue() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("OfferFileQueue() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if err == nil {
-				gotPath := path.Join(got.QueuePath, got.SubQueueName)
+				gotPath := path.Join(got.QueuePath, got.FileQueueName)
 				if gotPath != tt.want {
-					t.Errorf("OfferSubQueue() got = %v, want %v", gotPath, tt.want)
+					t.Errorf("OfferFileQueue() got = %v, want %v", gotPath, tt.want)
 				}
 			}
 		})
 	}
 }
 
-func TestSubQueue_Take(t *testing.T) {
+func TestFileQueue_Take(t *testing.T) {
 	// clone test dir into sandbox
 
 	type fields struct {
@@ -62,7 +62,7 @@ func TestSubQueue_Take(t *testing.T) {
 		{
 			name: "data1",
 			fields: fields{
-				QueuePath:    path.Join(testBase, "subqueue_take_test1"),
+				QueuePath:    path.Join(testBase, "filequeue_take_test1"),
 				SubQueueName: "data1.jsonl",
 			},
 			args: args{2},
@@ -71,7 +71,7 @@ func TestSubQueue_Take(t *testing.T) {
 		{
 			name: "data1",
 			fields: fields{
-				QueuePath:    path.Join(testBase, "subqueue_take_test1"),
+				QueuePath:    path.Join(testBase, "filequeue_take_test1"),
 				SubQueueName: "data1.jsonl",
 			},
 			args: args{1},
@@ -80,7 +80,7 @@ func TestSubQueue_Take(t *testing.T) {
 		{
 			name: "data1",
 			fields: fields{
-				QueuePath:    path.Join(testBase, "subqueue_take_test1"),
+				QueuePath:    path.Join(testBase, "filequeue_take_test1"),
 				SubQueueName: "data1.jsonl",
 			},
 			args: args{10},
@@ -89,7 +89,7 @@ func TestSubQueue_Take(t *testing.T) {
 		{
 			name: "data1",
 			fields: fields{
-				QueuePath:    path.Join(testBase, "subqueue_take_test1"),
+				QueuePath:    path.Join(testBase, "filequeue_take_test1"),
 				SubQueueName: "data1.jsonl",
 			},
 			args: args{1},
@@ -98,7 +98,7 @@ func TestSubQueue_Take(t *testing.T) {
 		{
 			name: "data2",
 			fields: fields{
-				QueuePath:    path.Join(testBase, "subqueue_take_test1"),
+				QueuePath:    path.Join(testBase, "filequeue_take_test1"),
 				SubQueueName: "data2.jsonl",
 			},
 			args: args{3},
@@ -111,7 +111,7 @@ func TestSubQueue_Take(t *testing.T) {
 		{
 			name: "data2",
 			fields: fields{
-				QueuePath:    path.Join(testBase, "subqueue_take_test1"),
+				QueuePath:    path.Join(testBase, "filequeue_take_test1"),
 				SubQueueName: "data2.jsonl",
 			},
 			args: args{4},
@@ -120,7 +120,7 @@ func TestSubQueue_Take(t *testing.T) {
 		{
 			name: "data3",
 			fields: fields{
-				QueuePath:    path.Join(testBase, "subqueue_take_test1"),
+				QueuePath:    path.Join(testBase, "filequeue_take_test1"),
 				SubQueueName: "data3.jsonl",
 			},
 			args: args{3},
@@ -133,14 +133,14 @@ func TestSubQueue_Take(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			subq, _ := NewSubQueue(tt.fields.QueuePath, tt.fields.SubQueueName)
+			subq, _ := NewFileQueue(tt.fields.QueuePath, tt.fields.SubQueueName)
 			if got := subq.Take(tt.args.n); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Take() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 
-	filename := path.Join(testBase, "subqueue_take_test1", "data2.jsonl")
+	filename := path.Join(testBase, "filequeue_take_test1", "data2.jsonl")
 	file, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0)
 	if err != nil {
 		log.Println(err)
@@ -159,7 +159,7 @@ func TestSubQueue_Take(t *testing.T) {
 		{
 			name: "data2",
 			fields: fields{
-				QueuePath:    path.Join(testBase, "subqueue_take_test1"),
+				QueuePath:    path.Join(testBase, "filequeue_take_test1"),
 				SubQueueName: "data2.jsonl",
 			},
 			args: args{4},
@@ -168,7 +168,7 @@ func TestSubQueue_Take(t *testing.T) {
 	}
 	for _, tt := range tests2 {
 		t.Run(tt.name, func(t *testing.T) {
-			subq, _ := NewSubQueue(tt.fields.QueuePath, tt.fields.SubQueueName)
+			subq, _ := NewFileQueue(tt.fields.QueuePath, tt.fields.SubQueueName)
 			if got := subq.Take(tt.args.n); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Take() = %v, want %v", got, tt.want)
 			}

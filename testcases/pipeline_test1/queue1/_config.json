@@ -1,0 +1,6 @@
+{
+  "TakePerTick": 3,
+  "Correction": 1.0,
+  "ReqTmplName" : "_req.json",
+  "ResTmplName" : "_res.json"
+}

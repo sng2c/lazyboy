@@ -38,33 +38,33 @@ func TestResolve(t *testing.T) {
 		}, want: obj([]byte(`{"name":"khs"}`))},
 
 		{name: "ref1", args: args{
-			tmpl:    `{"name": #{ $.username } }`,
+			tmpl:    `{"name": {{ refjs . "$.username" }} }`,
 			srcData: obj([]byte(`{"username":"khs"}`)),
 		}, want: obj([]byte(`{"name":"khs"}`))},
 
 		{name: "ref2", args: args{
-			tmpl:    `{"name":#{$.username}}`,
+			tmpl:    `{"name":{{ refjs . "$.username" }}}`,
 			srcData: obj([]byte(`{"username":{"given":"hs","family":"k"}}`)),
 		}, want: obj([]byte(`{"name":{"given":"hs","family":"k"}}`))},
 
 		{name: "ref3", args: args{
-			tmpl:    `{"first":#{$.username.given},"last":#{$.username.family}}`,
+			tmpl:    `{"first":{{ refjs . "$.username.given" }},"last":{{ refjs . "$.username.family" }}}`,
 			srcData: obj([]byte(`{"username":{"given":"hs","family":"k"}}`)),
 		}, want: obj([]byte(`{"first":"hs","last":"k"}`))},
 
 		{name: "refarr", args: args{
-			tmpl:    `{"full":#{$.username}}`,
+			tmpl:    `{"full":{{ refjs . "$.username" }}}`,
 			srcData: obj([]byte(`{"username":{"given":"hs","family":"k"}}`)),
 		}, want: obj([]byte(`{"full":{"given":"hs","family":"k"}}`))},
 
 		{name: "ref-non", args: args{
-			tmpl:    `{"first":#{$.username.given},"last":#{$.username.family}}`,
+			tmpl:    `{"first":{{ refjs . "$.username.given" }},"last":{{ refjs . "$.username.family" }}}`,
 			srcData: obj([]byte(`{"username":{"family":"k"}}`)),
 		},
 			want: obj([]byte(`{"first":null,"last":"k"}`)),
 		},
 		{name: "ref-multi", args: args{
-			tmpl:    `{"givens":#{$..given}}`,
+			tmpl:    `{"givens":{{ refjs . "$..given" }}}`,
 			srcData: obj([]byte(`[{"username":{"given":"hs","family":"k"}},{"username":{"given":"hanson","family":"k"}}]`)),
 		},
 			want: obj([]byte(`{"givens":["hs","hanson"]}`)),
@@ -80,30 +80,6 @@ func TestResolve(t *testing.T) {
 			}
 			if !reflect.DeepEqual(obj([]byte(got)), tt.want) {
 				t.Errorf("Resolve() got = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestTransTemplate(t *testing.T) {
-	type args struct {
-		tmplStr string
-	}
-	tests := []struct {
-		name string
-		args args
-		want string
-	}{
-		{name: "trans", args: args{"123"}, want: "123"},
-		{name: "trans", args: args{`123 #{ 1 } 456`}, want: `123 {{ref . "1"}} 456`},
-		{name: "trans", args: args{`123 #{ 1} 456`}, want: `123 {{ref . "1"}} 456`},
-		{name: "trans", args: args{`#{1}`}, want: `{{ref . "1"}}`},
-		{name: "trans", args: args{`#{1}`}, want: `{{ref . "1"}}`},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := transTemplate(tt.args.tmplStr); got != tt.want {
-				t.Errorf("transTemplate() = %v, want %v", got, tt.want)
 			}
 		})
 	}

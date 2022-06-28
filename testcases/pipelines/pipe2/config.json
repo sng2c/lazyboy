@@ -1,0 +1,7 @@
+{
+  "TakePerTick": 1,
+  "Correction": 1.0,
+  "ActiveTime": "",
+  "ReqTmplName": "req",
+  "ReSTmplName": "res"
+}

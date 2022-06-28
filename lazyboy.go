@@ -36,7 +36,7 @@ func pipe(pipePath string) {
 
 	// 3. MERGE DATA
 	for _, t := range taken {
-		request, err := pipeline.BuildRequest(t)
+		request, err := pipeline.BuildReq(t)
 		if err != nil {
 			return
 		}

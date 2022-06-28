@@ -7,7 +7,7 @@ import (
 	"github.com/PaesslerAG/gval"
 	"github.com/PaesslerAG/jsonpath"
 	"log"
-	"regexp"
+	"strings"
 	"text/template"
 )
 
@@ -33,7 +33,7 @@ Data를 json path로 추출해서 쓰려고 함
 
 var builder = gval.Full(jsonpath.PlaceholderExtension())
 
-func jsonRef(tmplData interface{}, pathStr string) string {
+func jsonRefJs(tmplData interface{}, pathStr string) string {
 	path, err := builder.NewEvaluable(pathStr)
 	if err != nil {
 		log.Println(err)
@@ -46,19 +46,35 @@ func jsonRef(tmplData interface{}, pathStr string) string {
 	}
 	m, _ := json.Marshal(got)
 	return string(m)
+	//return got.(string)
+}
+func qq(str string) string {
+	return strings.Replace(str, "\"", "", -1)
 }
 
-func transTemplate(tmplStr string) string {
-	compile, _ := regexp.Compile(`#\{\s*(.+?)\s*}`) // "#{ jsonpath }"
-	tmplStr2 := compile.ReplaceAllString(tmplStr, `{{ref . "$1"}}`)
-	return tmplStr2
+func jsonRefUrl(tmplData interface{}, pathStr string) string {
+	path, err := builder.NewEvaluable(pathStr)
+	if err != nil {
+		log.Println(err)
+		return "null"
+	}
+	got, err := path(context.Background(), tmplData)
+	if err != nil {
+		log.Println(err)
+		return "null"
+	}
+	//m, _ := json.Marshal(got)
+	//return string(m)
+	return got.(string)
 }
 
 func NewTemplate(tmplStr string) (*template.Template, error) {
 	funcMap := template.FuncMap{
-		"ref": jsonRef,
+		"refjs":  jsonRefJs,
+		"qq":     qq,
+		"refurl": jsonRefUrl,
 	}
-	tmpl, err := template.New("tmpl").Funcs(funcMap).Parse(transTemplate(tmplStr))
+	tmpl, err := template.New("tmpl").Funcs(funcMap).Parse(tmplStr)
 	if err != nil {
 		log.Fatalf("parsing: %s", err)
 		return nil, err

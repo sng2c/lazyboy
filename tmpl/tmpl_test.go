@@ -38,33 +38,33 @@ func TestResolve(t *testing.T) {
 		}, want: obj([]byte(`{"name":"khs"}`))},
 
 		{name: "ref1", args: args{
-			tmpl:    `{"name": {{ refjs . "$.username" }} }`,
+			tmpl:    `{"name": {{ . | refjs "$.username" }} }`,
 			srcData: obj([]byte(`{"username":"khs"}`)),
 		}, want: obj([]byte(`{"name":"khs"}`))},
 
 		{name: "ref2", args: args{
-			tmpl:    `{"name":{{ refjs . "$.username" }}}`,
+			tmpl:    `{"name":{{ refjs "$.username" . }}}`,
 			srcData: obj([]byte(`{"username":{"given":"hs","family":"k"}}`)),
 		}, want: obj([]byte(`{"name":{"given":"hs","family":"k"}}`))},
 
 		{name: "ref3", args: args{
-			tmpl:    `{"first":{{ refjs . "$.username.given" }},"last":{{ refjs . "$.username.family" }}}`,
+			tmpl:    `{"first":{{ refjs "$.username.given" . }},"last":{{ refjs "$.username.family" . }}}`,
 			srcData: obj([]byte(`{"username":{"given":"hs","family":"k"}}`)),
 		}, want: obj([]byte(`{"first":"hs","last":"k"}`))},
 
 		{name: "refarr", args: args{
-			tmpl:    `{"full":{{ refjs . "$.username" }}}`,
+			tmpl:    `{"full":{{ refjs "$.username" . }}}`,
 			srcData: obj([]byte(`{"username":{"given":"hs","family":"k"}}`)),
 		}, want: obj([]byte(`{"full":{"given":"hs","family":"k"}}`))},
 
 		{name: "ref-non", args: args{
-			tmpl:    `{"first":{{ refjs . "$.username.given" }},"last":{{ refjs . "$.username.family" }}}`,
+			tmpl:    `{"first":{{ refjs "$.username.given" . }},"last":{{ refjs "$.username.family" . }}}`,
 			srcData: obj([]byte(`{"username":{"family":"k"}}`)),
 		},
 			want: obj([]byte(`{"first":null,"last":"k"}`)),
 		},
 		{name: "ref-multi", args: args{
-			tmpl:    `{"givens":{{ refjs . "$..given" }}}`,
+			tmpl:    `{"givens":{{ refjs "$..given" . }}}`,
 			srcData: obj([]byte(`[{"username":{"given":"hs","family":"k"}},{"username":{"given":"hanson","family":"k"}}]`)),
 		},
 			want: obj([]byte(`{"givens":["hs","hanson"]}`)),

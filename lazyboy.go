@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
 	"lazyboy/queue"
 	"log"
 	"os"
@@ -9,6 +11,7 @@ import (
 )
 
 func tick(pipeBasePath string) {
+	ctx := context.Background()
 	log.Println("PIPE", pipeBasePath)
 	dirs, err := os.ReadDir(pipeBasePath)
 	if err != nil {
@@ -17,11 +20,11 @@ func tick(pipeBasePath string) {
 	}
 	for _, dir := range dirs {
 		if dir.IsDir() {
-			go pipe(path.Join(pipeBasePath, dir.Name()))
+			go pipe(ctx, path.Join(pipeBasePath, dir.Name()))
 		}
 	}
 }
-func pipe(pipePath string) {
+func pipe(ctx context.Context, pipePath string) {
 	log.Println("PIPE", pipePath)
 	// 1. SETUP
 	// load config from path
@@ -31,21 +34,58 @@ func pipe(pipePath string) {
 		return
 	}
 
+	if !pipeline.IsActive(time.Now()) {
+		log.Println("Not active")
+		return
+	}
+
 	// 2. TAKE
 	taken := pipeline.Take()
 
 	// 3. MERGE DATA
 	for _, t := range taken {
-		request, err := pipeline.BuildReq(t)
+		var tobj interface{}
+		err := json.Unmarshal(t, &tobj)
+		if err != nil {
+			log.Println("Invalid line", err)
+			continue
+		}
+		req, err := queue.NewReqFromPipeline(pipeline, tobj)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		log.Println(req)
+
+		res := req.Run(ctx, pipeline)
+		if res.Err != "" {
+			log.Println("RUN ERR:", res.Err)
+		}
+
+		log.Printf("Res : %#v", res)
+
+		resobj, err := res.ParseResponse(pipeline)
 		if err != nil {
 			return
 		}
-		log.Println(request)
+
+		resout, err := json.Marshal(resobj)
+		if err != nil {
+			return
+		}
+
+		log.Printf("Log : %v", string(resout))
 	}
 
 }
 func run(pipeBasePath string) {
-	ticker := time.NewTicker(time.Second)
+	debug := os.Getenv("LAZYBOY_DEBUG")
+	var ticker *time.Ticker
+	if debug != "" {
+		ticker = time.NewTicker(time.Second)
+	} else {
+		ticker = time.NewTicker(time.Minute)
+	}
 	//go func() {
 	for t := range ticker.C {
 		log.Println("Tick at", t)
@@ -58,5 +98,5 @@ func main() {
 	if err != nil {
 		return
 	}
-	run(path.Join(wd, "testcases", "pipelines"))
+	run(path.Join(wd, "pipelines"))
 }

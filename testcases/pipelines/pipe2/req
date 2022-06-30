@@ -1,5 +1,5 @@
 {
   "Method":"POST",
   "Url":"http://localhost:8080/get",
-  "BodyStr": "uuid={{ refurl . "$.uuid" | urlquery }}"
+  "BodyStr": "uuid={{ reftext "$.uuid" . | urlquery }}"
 }

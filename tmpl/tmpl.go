@@ -7,7 +7,6 @@ import (
 	"github.com/PaesslerAG/gval"
 	"github.com/PaesslerAG/jsonpath"
 	"log"
-	"strings"
 	"text/template"
 )
 
@@ -33,50 +32,47 @@ Data를 json path로 추출해서 쓰려고 함
 
 var builder = gval.Full(jsonpath.PlaceholderExtension())
 
-func jsonRefJs(tmplData interface{}, pathStr string) string {
-	path, err := builder.NewEvaluable(pathStr)
-	if err != nil {
-		log.Println(err)
+func jsonRefJs(pathStr string, tmplData interface{}) string {
+	ref := jsonRef(pathStr, tmplData)
+	if ref == nil {
 		return "null"
 	}
-	got, err := path(context.Background(), tmplData)
-	if err != nil {
-		log.Println(err)
-		return "null"
-	}
-	m, _ := json.Marshal(got)
+	m, _ := json.Marshal(ref)
 	return string(m)
-	//return got.(string)
-}
-func qq(str string) string {
-	return strings.Replace(str, "\"", "", -1)
 }
 
-func jsonRefUrl(tmplData interface{}, pathStr string) string {
+func jsonRef(pathStr string, tmplData interface{}) interface{} {
 	path, err := builder.NewEvaluable(pathStr)
 	if err != nil {
 		log.Println(err)
-		return "null"
+		return nil
 	}
 	got, err := path(context.Background(), tmplData)
 	if err != nil {
 		log.Println(err)
-		return "null"
+		return nil
 	}
-	//m, _ := json.Marshal(got)
-	//return string(m)
-	return got.(string)
+	return got
+	//return got.(string)
+}
+
+func jsonRefText(pathStr string, tmplData interface{}) string {
+	ref := jsonRef(pathStr, tmplData)
+	if ref == nil {
+		return ""
+	}
+	return ref.(string)
 }
 
 func NewTemplate(tmplStr string) (*template.Template, error) {
 	funcMap := template.FuncMap{
-		"refjs":  jsonRefJs,
-		"qq":     qq,
-		"refurl": jsonRefUrl,
+		"ref":     jsonRef,
+		"refjs":   jsonRefJs,
+		"reftext": jsonRefText,
 	}
 	tmpl, err := template.New("tmpl").Funcs(funcMap).Parse(tmplStr)
 	if err != nil {
-		log.Fatalf("parsing: %s", err)
+		log.Printf("parsing: %s", err)
 		return nil, err
 	}
 	return tmpl, nil
@@ -86,7 +82,7 @@ func ResolveTemplate(tmpl *template.Template, srcData interface{}) (string, erro
 	var outbuf bytes.Buffer
 	err := tmpl.Execute(&outbuf, srcData)
 	if err != nil {
-		log.Fatalf("execution: %s", err)
+		log.Printf("execution: %s", err)
 		return "", err
 	}
 	return outbuf.String(), nil

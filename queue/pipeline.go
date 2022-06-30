@@ -3,9 +3,9 @@ package queue
 import (
 	"encoding/json"
 	"github.com/robfig/cron"
+	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"lazyboy/tmpl"
-	"log"
 	"path"
 	"text/template"
 	"time"

@@ -2,8 +2,8 @@ package queue
 
 import (
 	"encoding/json"
+	log "github.com/sirupsen/logrus"
 	"lazyboy/tmpl"
-	"log"
 	"path"
 	"reflect"
 	"testing"
@@ -136,29 +136,29 @@ func TestPipeline_BuildRequest(t *testing.T) {
 			name:   "pipe buildReq",
 			fields: fields{newQueue(path.Join(testBase, "pipelines", "pipe1", "config.json"))},
 			args:   args{obj([]byte(`{"uuid":"1"}`))}, want: &Req{
-				Method:  "GET",
-				Url:     "http://localhost:8000/hello.txt?uuid=1",
-				Headers: nil,
-				Extra:   map[string]interface{}{"uuid": "1"},
-			}, wantErr: false},
+			Method:  "GET",
+			Url:     "http://localhost:8000/hello.txt?uuid=1",
+			Headers: nil,
+			Extra:   map[string]interface{}{"uuid": "1"},
+		}, wantErr: false},
 		{
 			name:   "pipe buildReq2",
 			fields: fields{newQueue(path.Join(testBase, "pipelines", "pipe2", "config.json"))},
 			args:   args{obj([]byte(`{"uuid":"&1"}`))}, want: &Req{
-				Method:  "POST",
-				Url:     "http://localhost:8080/get",
-				Headers: nil,
-				BodyStr: `uuid=%261`,
-			}, wantErr: false},
+			Method:  "POST",
+			Url:     "http://localhost:8080/get",
+			Headers: nil,
+			BodyStr: `uuid=%261`,
+		}, wantErr: false},
 		{
 			name:   "pipe buildReq2",
 			fields: fields{newQueue(path.Join(testBase, "pipelines", "pipe2", "config.json"))},
 			args:   args{obj([]byte(`{"uuid":"가나다"}`))}, want: &Req{
-				Method:  "POST",
-				Url:     "http://localhost:8080/get",
-				Headers: nil,
-				BodyStr: `uuid=%EA%B0%80%EB%82%98%EB%8B%A4`,
-			}, wantErr: false},
+			Method:  "POST",
+			Url:     "http://localhost:8080/get",
+			Headers: nil,
+			BodyStr: `uuid=%EA%B0%80%EB%82%98%EB%8B%A4`,
+		}, wantErr: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

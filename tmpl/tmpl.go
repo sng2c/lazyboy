@@ -6,7 +6,8 @@ import (
 	"encoding/json"
 	"github.com/PaesslerAG/gval"
 	"github.com/PaesslerAG/jsonpath"
-	"log"
+	log "github.com/sirupsen/logrus"
+	"strconv"
 	"text/template"
 )
 
@@ -64,11 +65,20 @@ func jsonRefText(pathStr string, tmplData interface{}) string {
 	return ref.(string)
 }
 
+func jsonRefQuote(pathStr string, tmplData interface{}) string {
+	ref := jsonRef(pathStr, tmplData)
+	if ref == nil {
+		return ""
+	}
+	return strconv.Quote(ref.(string))
+}
+
 func NewTemplate(tmplStr string) (*template.Template, error) {
 	funcMap := template.FuncMap{
-		"ref":     jsonRef,
-		"refjs":   jsonRefJs,
-		"reftext": jsonRefText,
+		"ref":      jsonRef,
+		"refjs":    jsonRefJs,
+		"reftext":  jsonRefText,
+		"refquote": jsonRefQuote,
 	}
 	tmpl, err := template.New("tmpl").Funcs(funcMap).Parse(tmplStr)
 	if err != nil {
@@ -78,12 +88,12 @@ func NewTemplate(tmplStr string) (*template.Template, error) {
 	return tmpl, nil
 }
 
-func ResolveTemplate(tmpl *template.Template, srcData interface{}) (string, error) {
+func ResolveTemplate(tmpl *template.Template, srcData interface{}) ([]byte, error) {
 	var outbuf bytes.Buffer
 	err := tmpl.Execute(&outbuf, srcData)
 	if err != nil {
 		log.Printf("execution: %s", err)
-		return "", err
+		return nil, err
 	}
-	return outbuf.String(), nil
+	return outbuf.Bytes(), nil
 }

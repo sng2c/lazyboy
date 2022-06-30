@@ -2,7 +2,7 @@ package queue
 
 import (
 	cp "github.com/otiai10/copy"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"os"
 	"testing"
 )

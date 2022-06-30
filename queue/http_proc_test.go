@@ -95,27 +95,27 @@ func Test_BuildResTemplate(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    interface{}
+		want    []byte
 		wantErr bool
 	}{
 		{name: "parse response", args: args{
-			resTmpl: _convTemplate(`{"httpCode": {{refjs "$.StatusCode" . }} }`),
+			resTmpl: _convTemplate(`{"httpCode":{{refjs "$.StatusCode" . }}}`),
 			response: &http.Response{
 				Status:     "200 OK",
 				StatusCode: 200,
 				Proto:      "http",
 			},
-		}, want: obj([]byte(`{"httpCode": 200}`)), wantErr: false},
+		}, want: []byte(`{"httpCode":200}`), wantErr: false},
 		{name: "parse response", args: args{
-			resTmpl: _convTemplate(`{"httpCode": {{refjs "$.StatusCode" . }} }`),
+			resTmpl: _convTemplate(`{"httpCode":{{refjs "$.StatusCode" . }}}`),
 			response: &http.Response{
 				Status:     "200 OK",
 				StatusCode: 200,
 				Proto:      "http",
 			},
-		}, want: obj([]byte(`{"httpCode": 200}`)), wantErr: false},
+		}, want: []byte(`{"httpCode":200}`), wantErr: false},
 		{name: "parse response", args: args{
-			resTmpl: _convTemplate(`{"userName": {{refjs "$.BodyObj.name" .}} }`),
+			resTmpl: _convTemplate(`{"userName":{{refjs "$.BodyObj.name" .}}}`),
 			response: &http.Response{
 				Status:     "200 OK",
 				StatusCode: 200,
@@ -123,9 +123,9 @@ func Test_BuildResTemplate(t *testing.T) {
 				Header:     newHeader([]string{"Content-type", "application/json"}),
 				Body:       io.NopCloser(strings.NewReader(`{"name":"sng2c"}`)),
 			},
-		}, want: obj([]byte(`{"userName": "sng2c"}`)), wantErr: false},
+		}, want: []byte(`{"userName":"sng2c"}`), wantErr: false},
 		{name: "parse response", args: args{
-			resTmpl: _convTemplate(`{"greetings": "hello {{reftext "$.BodyText" .}}!" }`),
+			resTmpl: _convTemplate(`{"greetings":"hello {{reftext "$.BodyText" .}}!"}`),
 			response: &http.Response{
 				Status:     "200 OK",
 				StatusCode: 200,
@@ -133,7 +133,17 @@ func Test_BuildResTemplate(t *testing.T) {
 				Header:     newHeader([]string{"Content-type", "text/html"}),
 				Body:       io.NopCloser(strings.NewReader(`sng2c`)),
 			},
-		}, want: obj([]byte(`{"greetings":"hello sng2c!"}`)), wantErr: false},
+		}, want: []byte(`{"greetings":"hello sng2c!"}`), wantErr: false},
+		{name: "parse response", args: args{
+			resTmpl: _convTemplate(`{"greetings":"hello {{reftext "$.BodyText" .}}!"}`),
+			response: &http.Response{
+				Status:     "200 OK",
+				StatusCode: 200,
+				Proto:      "http",
+				Header:     newHeader([]string{"Content-type", "text/html"}),
+				Body:       io.NopCloser(strings.NewReader("sng2c\n?")),
+			},
+		}, want: []byte("{\"greetings\":\"hello sng2c\n?!\"}"), wantErr: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -144,7 +154,7 @@ func Test_BuildResTemplate(t *testing.T) {
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("BuildResTemplate() got = %#v, want %#v", got, tt.want)
+				t.Errorf("BuildResTemplate() got = %#v, want %#v", string(got), string(tt.want))
 			}
 		})
 	}

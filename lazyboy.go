@@ -4,7 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"lazyboy/queue"
-	"log"
+
+	log "github.com/sirupsen/logrus"
 	"os"
 	"path"
 	"time"
@@ -12,10 +13,10 @@ import (
 
 func tick(pipeBasePath string) {
 	ctx := context.Background()
-	log.Println("PIPE", pipeBasePath)
+	log.Infof("BasePath : %v", pipeBasePath)
 	dirs, err := os.ReadDir(pipeBasePath)
 	if err != nil {
-		log.Println(err)
+		log.Warnf("Reading Dir failed - %v", err)
 		return
 	}
 	for _, dir := range dirs {
@@ -24,57 +25,59 @@ func tick(pipeBasePath string) {
 		}
 	}
 }
+
 func pipe(ctx context.Context, pipePath string) {
-	log.Println("PIPE", pipePath)
+	logger := log.WithField("PipePath", pipePath)
+	logger.Info("Begin Pipe")
 	// 1. SETUP
 	// load config from path
 	pipeline, err := queue.NewPipelineFromConfigPath(path.Join(pipePath, "config.json"))
 	if err != nil {
-		log.Println(err)
+		logger.Debugf("Can not load config.json in PipePath - %v", err)
 		return
 	}
 
 	if !pipeline.IsActive(time.Now()) {
-		log.Println("Not active")
+		logger.Warnf("Not active. ActiveTime : %v", pipeline.ActiveTime)
 		return
 	}
 
 	// 2. TAKE
 	taken := pipeline.Take()
 
-	// 3. MERGE DATA
-	for _, t := range taken {
-		var tobj interface{}
-		err := json.Unmarshal(t, &tobj)
-		if err != nil {
-			log.Println("Invalid line", err)
-			continue
-		}
-		req, err := queue.NewReqFromPipeline(pipeline, tobj)
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-		log.Println(req)
+	if len(taken) == 0 {
+		logger.Warnf("Empty")
+	} else {
+		// 3. MERGE DATA
+		for i, t := range taken {
+			var tobj interface{}
+			err := json.Unmarshal(t, &tobj)
+			if err != nil {
+				logger.Warnf("Invalid line #%v - %v", i, err)
+				continue
+			}
+			req, err := queue.NewReqFromPipeline(pipeline, tobj)
+			if err != nil {
+				logger.Warnf("Building Req failed %v", err)
+				continue
+			}
+			logger.Debugf("Req : %#v", req)
 
-		res := req.Run(ctx, pipeline)
-		if res.Err != "" {
-			log.Println("RUN ERR:", res.Err)
+			res := req.Run(ctx, pipeline)
+			if res.Err != "" {
+				logger.Println("RUN ERR:", res.Err)
+			}
+
+			logger.Debugf("Res : %#v", res)
+
+			resout, err := res.ParseResponse(pipeline)
+			if err != nil {
+				logger.Warnf("Rendering output failed - %v", err)
+				return
+			}
+
+			logger.Debugf("Output : %v", string(resout))
 		}
-
-		log.Printf("Res : %#v", res)
-
-		resobj, err := res.ParseResponse(pipeline)
-		if err != nil {
-			return
-		}
-
-		resout, err := json.Marshal(resobj)
-		if err != nil {
-			return
-		}
-
-		log.Printf("Log : %v", string(resout))
 	}
 
 }
@@ -82,13 +85,15 @@ func run(pipeBasePath string) {
 	debug := os.Getenv("LAZYBOY_DEBUG")
 	var ticker *time.Ticker
 	if debug != "" {
+		log.SetLevel(log.DebugLevel)
+		log.SetReportCaller(true)
 		ticker = time.NewTicker(time.Second)
 	} else {
 		ticker = time.NewTicker(time.Minute)
 	}
 	//go func() {
 	for t := range ticker.C {
-		log.Println("Tick at", t)
+		log.Infof("Tick at %v", t)
 		tick(pipeBasePath)
 	}
 	//}()

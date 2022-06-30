@@ -5,9 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/fatih/structs"
+	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"lazyboy/tmpl"
-	"log"
 	"net/http"
 	"strings"
 	"text/template"
@@ -131,7 +131,7 @@ func (req *Req) Run(ctx context.Context, pipe *Pipeline) *Res {
 	return res
 }
 
-func (res *Res) ParseResponse(pipe *Pipeline) (interface{}, error) {
+func (res *Res) ParseResponse(pipe *Pipeline) ([]byte, error) {
 	resTmpl, err := pipe.ResTmpl()
 	if err != nil {
 		return nil, err
@@ -139,21 +139,15 @@ func (res *Res) ParseResponse(pipe *Pipeline) (interface{}, error) {
 	return BuildResTemplate(resTmpl, res)
 }
 
-func BuildResTemplate(resTmpl *template.Template, res *Res) (interface{}, error) {
+func BuildResTemplate(resTmpl *template.Template, res *Res) ([]byte, error) {
 	log.Println("BuildResTemplate", res)
 	resolveTemplateData, err := tmpl.ResolveTemplate(resTmpl, structs.Map(res))
 	if err != nil {
 		log.Println("BuildResTemplate err1", err)
 		return nil, err
 	}
-	var resobj interface{}
-	log.Println(resolveTemplateData)
-	err = json.Unmarshal([]byte(resolveTemplateData), &resobj)
-	if err != nil {
-		log.Println("BuildResTemplate err2", err)
-		return nil, err
-	}
-	return resobj, nil
+
+	return resolveTemplateData, nil
 }
 
 func (req *Req) BuildHttpRequest() (*http.Request, error) {

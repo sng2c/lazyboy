@@ -2,7 +2,7 @@ package tmpl
 
 import (
 	"encoding/json"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"reflect"
 	"testing"
 )

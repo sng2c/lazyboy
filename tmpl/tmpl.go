@@ -8,6 +8,7 @@ import (
 	"github.com/PaesslerAG/jsonpath"
 	log "github.com/sirupsen/logrus"
 	"strconv"
+	"strings"
 	"text/template"
 )
 
@@ -73,12 +74,17 @@ func jsonRefQuote(pathStr string, tmplData interface{}) string {
 	return strconv.Quote(ref.(string))
 }
 
+func trim(q string, s string) string {
+	return strings.Trim(s, q)
+}
+
 func NewTemplate(tmplStr string) (*template.Template, error) {
 	funcMap := template.FuncMap{
 		"ref":      jsonRef,
 		"refjs":    jsonRefJs,
 		"reftext":  jsonRefText,
 		"refquote": jsonRefQuote,
+		"trim":     trim,
 	}
 	tmpl, err := template.New("tmpl").Funcs(funcMap).Parse(tmplStr)
 	if err != nil {

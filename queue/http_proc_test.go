@@ -39,7 +39,7 @@ func TestBuildHttpRequest(t *testing.T) {
 			Headers:   nil,
 			BodyType:  BodyTypeText,
 			BodyStr:   "HELLO",
-			BodyObj:   nil,
+			BodyJson:  nil,
 			BodyBytes: nil,
 		}}, want: "GET / HTTP/1.1\r\nHost: localhost\r\nUser-Agent: Go-http-client/1.1\r\nContent-Length: 5\r\n\r\nHELLO", wantErr: false},
 		{name: "ReqBuild", args: args{req: &Req{
@@ -48,7 +48,7 @@ func TestBuildHttpRequest(t *testing.T) {
 			Headers:   map[string]interface{}{"X-TEST": "WORLD"},
 			BodyType:  BodyTypeText,
 			BodyStr:   "HELLO",
-			BodyObj:   nil,
+			BodyJson:  nil,
 			BodyBytes: nil,
 		}}, want: "GET / HTTP/1.1\r\nHost: localhost\r\nUser-Agent: Go-http-client/1.1\r\nContent-Length: 5\r\nX-Test: WORLD\r\n\r\nHELLO", wantErr: false},
 		{name: "ReqBuild", args: args{req: &Req{
@@ -57,7 +57,7 @@ func TestBuildHttpRequest(t *testing.T) {
 			Headers:   map[string]interface{}{"X-TEST": "WORLD"},
 			BodyType:  BodyTypeJson,
 			BodyStr:   "",
-			BodyObj:   map[string]string{"last_name": "hs", "first_name": "k"},
+			BodyJson:  map[string]string{"last_name": "hs", "first_name": "k"},
 			BodyBytes: nil,
 		}}, want: "GET / HTTP/1.1\r\nHost: localhost\r\nUser-Agent: Go-http-client/1.1\r\nContent-Length: 35\r\nX-Test: WORLD\r\n\r\n{\"first_name\":\"k\",\"last_name\":\"hs\"}", wantErr: false},
 		{name: "ReqBuild", args: args{req: &Req{
@@ -66,7 +66,7 @@ func TestBuildHttpRequest(t *testing.T) {
 			Headers:   map[string]interface{}{"X-TEST": "WORLD"},
 			BodyType:  BodyTypeJson,
 			BodyStr:   "",
-			BodyObj:   nil,
+			BodyJson:  nil,
 			BodyBytes: nil,
 		}}, want: "GET /?abc=123 HTTP/1.1\r\nHost: localhost\r\nUser-Agent: Go-http-client/1.1\r\nContent-Length: 4\r\nX-Test: WORLD\r\n\r\nnull", wantErr: false},
 	}
@@ -115,7 +115,7 @@ func Test_BuildResTemplate(t *testing.T) {
 			},
 		}, want: []byte(`{"httpCode":200}`), wantErr: false},
 		{name: "parse response", args: args{
-			resTmpl: _convTemplate(`{"userName":{{refjs "$.BodyObj.name" .}}}`),
+			resTmpl: _convTemplate(`{"userName":{{refjs "$.BodyJson.name" .}}}`),
 			response: &http.Response{
 				Status:     "200 OK",
 				StatusCode: 200,
@@ -147,7 +147,7 @@ func Test_BuildResTemplate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			res, _ := NewResFromHttpResponse(tt.args.response)
+			res, _ := NewResFromHttpResponse(tt.args.response, BodyTypeNone)
 			got, err := BuildResTemplate(tt.args.resTmpl, res)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("BuildResTemplate() error = %v, wantErr %v", err, tt.wantErr)

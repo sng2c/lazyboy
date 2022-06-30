@@ -27,7 +27,7 @@ type Req struct {
 	Extra     map[string]interface{}
 	BodyType  BodyType
 	BodyStr   string
-	BodyObj   interface{}
+	BodyJson  interface{}
 	BodyBytes []byte
 }
 
@@ -38,7 +38,7 @@ type Res struct {
 	Headers    map[string]interface{}
 	BodyType   BodyType
 	BodyText   string
-	BodyObj    interface{}
+	BodyJson   interface{}
 	BodyBytes  []byte
 	Err        string
 }
@@ -64,7 +64,7 @@ func NewReqFromPipeline(pipe *Pipeline, data interface{}) (*Req, error) {
 	return &req, nil
 }
 
-func NewResFromHttpResponse(response *http.Response) (*Res, error) {
+func NewResFromHttpResponse(response *http.Response, forcedBodyType BodyType) (*Res, error) {
 	res := Res{
 		Status:     response.Status,
 		StatusCode: response.StatusCode,
@@ -79,20 +79,31 @@ func NewResFromHttpResponse(response *http.Response) (*Res, error) {
 	}
 	log.Println(response.Header.Get("Content-type"))
 	conttype := response.Header.Get("Content-type")
+
 	switch {
 	case conttype == "application/json":
 		res.BodyType = BodyTypeJson
-		err := json.Unmarshal(res.BodyBytes, &res.BodyObj)
+	case strings.HasPrefix(conttype, "text/"):
+		res.BodyType = BodyTypeText
+	default:
+		res.BodyType = BodyTypeByte
+	}
+
+	if forcedBodyType != BodyTypeNone {
+		log.Printf("Enforce bodyType to %v", forcedBodyType)
+		res.BodyType = forcedBodyType
+	}
+
+	switch res.BodyType {
+	case BodyTypeJson:
+		err := json.Unmarshal(res.BodyBytes, &res.BodyJson)
 		if err != nil {
 			return nil, err
 		}
-	case strings.HasPrefix(conttype, "text/"):
-		res.BodyType = BodyTypeText
+	case BodyTypeText:
 		if res.BodyBytes != nil {
 			res.BodyText = string(res.BodyBytes)
 		}
-	default:
-		res.BodyType = BodyTypeByte
 	}
 
 	for k, v := range response.Header {
@@ -120,7 +131,7 @@ func (req *Req) Run(ctx context.Context, pipe *Pipeline) *Res {
 		return res
 	}
 
-	res, err = NewResFromHttpResponse(response)
+	res, err = NewResFromHttpResponse(response, pipe.ResBodyType)
 	if err != nil {
 		res = &Res{}
 		res.Err = err.Error()
@@ -155,7 +166,7 @@ func (req *Req) BuildHttpRequest() (*http.Request, error) {
 
 	switch req.BodyType {
 	case BodyTypeJson:
-		jsonStr, err := json.Marshal(req.BodyObj)
+		jsonStr, err := json.Marshal(req.BodyJson)
 		if err != nil {
 			return nil, err
 		}

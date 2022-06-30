@@ -17,6 +17,7 @@ type Pipeline struct {
 	ActiveTime    string
 	ReqTmplName   string
 	ResTmplName   string
+	ResBodyType   BodyType
 	reqTmplString string `json:"-"`
 	resTmplString string `json:"-"`
 	queuePath     string

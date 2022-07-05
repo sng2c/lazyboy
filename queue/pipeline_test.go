@@ -28,7 +28,6 @@ func TestNewQueueFromConfigPath(t *testing.T) {
 		{name: "pipeline_test1", args: args{configPath: path.Join(testBase, "pipeline_test1", "queue1", "_config.json")},
 			want: &Pipeline{
 				TakePerTick:   3,
-				Correction:    1.0,
 				queuePath:     path.Join(testBase, "pipeline_test1", "queue1"),
 				ReqTmplName:   "_req.json",
 				ResTmplName:   "_res.json",
@@ -138,29 +137,29 @@ func TestPipeline_BuildRequest(t *testing.T) {
 			name:   "pipe buildReq",
 			fields: fields{newQueue(path.Join(testBase, "pipelines", "pipe1", "config.json"))},
 			args:   args{obj([]byte(`{"uuid":"1"}`))}, want: &Req{
-				Method:  "GET",
-				Url:     "http://localhost:8000/hello.txt?uuid=1",
-				Headers: nil,
-				Extra:   map[string]interface{}{"uuid": "1"},
-			}, wantErr: false},
+			Method:  "GET",
+			Url:     "http://localhost:8000/hello.txt?uuid=1",
+			Headers: nil,
+			Extra:   map[string]interface{}{"uuid": "1"},
+		}, wantErr: false},
 		{
 			name:   "pipe buildReq2",
 			fields: fields{newQueue(path.Join(testBase, "pipelines", "pipe2", "config.json"))},
 			args:   args{obj([]byte(`{"uuid":"&1"}`))}, want: &Req{
-				Method:  "POST",
-				Url:     "http://localhost:8080/get",
-				Headers: nil,
-				BodyStr: `uuid=%261`,
-			}, wantErr: false},
+			Method:  "POST",
+			Url:     "http://localhost:8080/get",
+			Headers: nil,
+			BodyStr: `uuid=%261`,
+		}, wantErr: false},
 		{
 			name:   "pipe buildReq2",
 			fields: fields{newQueue(path.Join(testBase, "pipelines", "pipe2", "config.json"))},
 			args:   args{obj([]byte(`{"uuid":"가나다"}`))}, want: &Req{
-				Method:  "POST",
-				Url:     "http://localhost:8080/get",
-				Headers: nil,
-				BodyStr: `uuid=%EA%B0%80%EB%82%98%EB%8B%A4`,
-			}, wantErr: false},
+			Method:  "POST",
+			Url:     "http://localhost:8080/get",
+			Headers: nil,
+			BodyStr: `uuid=%EA%B0%80%EB%82%98%EB%8B%A4`,
+		}, wantErr: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

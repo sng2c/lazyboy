@@ -3,5 +3,7 @@
   "Correction": 1.0,
   "ActiveTime": "",
   "ReqTmplName": "req",
-  "ReSTmplName": "res"
+  "ReSTmplName": "res",
+  "OutputPath" : "./out.log",
+  "UniqueKey" : "$.uuid"
 }

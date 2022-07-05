@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"github.com/fatih/structs"
-	log "github.com/sirupsen/logrus"
+	logrus "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"lazyboy/tmpl"
 	"net/http"
@@ -43,21 +44,26 @@ type Res struct {
 	Err        string
 }
 
+var ResTmplFormatError = errors.New("ResTmpl must be JSON format.")
+
 func NewReqFromPipeline(pipe *Pipeline, data interface{}) (*Req, error) {
+	logger := logrus.WithFields(logrus.Fields{"ctx": "http_proc/NewReqFromPipeline", "path": pipe.queuePath})
 	reqTmpl, err := pipe.ReqTmpl()
 	if err != nil {
-		log.Println(err)
+		logger.Warn(err)
 		return nil, err
 	}
 
 	resolveTemplateData, err := tmpl.ResolveTemplate(reqTmpl, data)
 
 	if err != nil {
+		logger.Warn(err)
 		return nil, err
 	}
 	var req Req
 	err = json.Unmarshal([]byte(resolveTemplateData), &req)
 	if err != nil {
+		logger.Warn(err)
 		return nil, err
 	}
 
@@ -65,6 +71,7 @@ func NewReqFromPipeline(pipe *Pipeline, data interface{}) (*Req, error) {
 }
 
 func NewResFromHttpResponse(response *http.Response, forcedBodyType BodyType) (*Res, error) {
+	logger := logrus.WithFields(logrus.Fields{"ctx": "http_proc/NewResFromHttpResponse"})
 	res := Res{
 		Status:     response.Status,
 		StatusCode: response.StatusCode,
@@ -74,23 +81,24 @@ func NewResFromHttpResponse(response *http.Response, forcedBodyType BodyType) (*
 	if response.Body != nil {
 		res.BodyBytes, err = ioutil.ReadAll(response.Body)
 		if err != nil {
+			logger.Warn(err)
 			return nil, err
 		}
 	}
-	log.Println(response.Header.Get("Content-type"))
-	conttype := response.Header.Get("Content-type")
+	logrus.Debugf("Content-type : %v", response.Header.Get("Content-type"))
+	contType := response.Header.Get("Content-type")
 
 	switch {
-	case conttype == "application/json":
+	case contType == "application/json":
 		res.BodyType = BodyTypeJson
-	case strings.HasPrefix(conttype, "text/"):
+	case strings.HasPrefix(contType, "text/"):
 		res.BodyType = BodyTypeText
 	default:
 		res.BodyType = BodyTypeByte
 	}
 
 	if forcedBodyType != BodyTypeNone {
-		log.Printf("Enforce bodyType to %v", forcedBodyType)
+		logrus.Debugf("Enforce bodyType to %v", forcedBodyType)
 		res.BodyType = forcedBodyType
 	}
 
@@ -98,6 +106,7 @@ func NewResFromHttpResponse(response *http.Response, forcedBodyType BodyType) (*
 	case BodyTypeJson:
 		err := json.Unmarshal(res.BodyBytes, &res.BodyJson)
 		if err != nil {
+			logger.Warn(err)
 			return nil, err
 		}
 	case BodyTypeText:
@@ -115,7 +124,9 @@ func NewResFromHttpResponse(response *http.Response, forcedBodyType BodyType) (*
 }
 func (req *Req) Run(ctx context.Context, pipe *Pipeline) *Res {
 	var res *Res
-	request, err := req.BuildHttpRequest()
+
+	request, err := req.BuildHttpRequest(ctx)
+
 	if err != nil {
 		res = &Res{}
 		res.Err = err.Error()
@@ -142,26 +153,36 @@ func (req *Req) Run(ctx context.Context, pipe *Pipeline) *Res {
 	return res
 }
 
-func (res *Res) ParseResponse(pipe *Pipeline) ([]byte, error) {
+func (res *Res) BuildOutput(pipe *Pipeline) (interface{}, error) {
 	resTmpl, err := pipe.ResTmpl()
 	if err != nil {
 		return nil, err
 	}
-	return BuildResTemplate(resTmpl, res)
+	resTemplate, err := BuildResTemplate(resTmpl, res)
+	if err != nil {
+		return nil, err
+	}
+	var out interface{}
+	err = json.Unmarshal(resTemplate, &out)
+	if err != nil {
+		logrus.Warn("ResTmpl must be JSON format.")
+		return nil, ResTmplFormatError
+	}
+	return out, nil
 }
 
 func BuildResTemplate(resTmpl *template.Template, res *Res) ([]byte, error) {
-	log.Println("BuildResTemplate", res)
+	logrus.Debug("BuildResTemplate", res)
 	resolveTemplateData, err := tmpl.ResolveTemplate(resTmpl, structs.Map(res))
 	if err != nil {
-		log.Println("BuildResTemplate err1", err)
+		logrus.Debug("BuildResTemplate err1", err)
 		return nil, err
 	}
 
 	return resolveTemplateData, nil
 }
 
-func (req *Req) BuildHttpRequest() (*http.Request, error) {
+func (req *Req) BuildHttpRequest(ctx context.Context) (*http.Request, error) {
 	var bodyBuf *bytes.Buffer
 
 	switch req.BodyType {
@@ -179,7 +200,7 @@ func (req *Req) BuildHttpRequest() (*http.Request, error) {
 		bodyBuf = bytes.NewBuffer([]byte{})
 	}
 
-	request, err := http.NewRequest(req.Method, req.Url, bodyBuf)
+	request, err := http.NewRequestWithContext(ctx, req.Method, req.Url, bodyBuf)
 	if err != nil {
 		return nil, err
 	}

@@ -1,0 +1,5 @@
+{
+  "Method":"GET",
+  "Url":"http://localhost:8000/hello.txt?uuid={{ reftext "$.uuid" . | urlquery }}",
+  "Extra": {"uuid": {{ refjs "$.uuid" . }} }
+}

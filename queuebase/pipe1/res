@@ -1,0 +1,1 @@
+{ "uuid": {{ refjs "$.Req.Extra.uuid" . }}, "Body": {{ reftext "$.BodyText" . | trim "\n" }}, "Err" : {{ refjs "$.Err" . }}}

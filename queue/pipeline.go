@@ -2,8 +2,10 @@ package queue
 
 import (
 	"encoding/json"
+	"errors"
+	"github.com/PaesslerAG/jsonpath"
 	"github.com/robfig/cron"
-	log "github.com/sirupsen/logrus"
+	logrus "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"lazyboy/tmpl"
 	"path"
@@ -12,15 +14,32 @@ import (
 )
 
 type Pipeline struct {
+	Name          string
+	UniqueKey     string
 	TakePerTick   int
-	Correction    float64
 	ActiveTime    string
+	Workers       int
 	ReqTmplName   string
 	ResTmplName   string
 	ResBodyType   BodyType
-	reqTmplString string `json:"-"`
-	resTmplString string `json:"-"`
+	OutputPath    string
+	reqTmplString string
+	resTmplString string
 	queuePath     string
+}
+
+func (pipe *Pipeline) OutputAbsPath() string {
+	return path.Join(pipe.queuePath, pipe.OutputPath)
+}
+func (pipe *Pipeline) GetName() string {
+	if pipe.Name == "" {
+		return path.Base(pipe.queuePath)
+	}
+	return pipe.Name
+}
+
+func (pipe *Pipeline) GetUniqueKey(o interface{}) (interface{}, error) {
+	return jsonpath.Get(pipe.UniqueKey, o)
 }
 
 func NewPipelineFromConfigPath(configPath string) (*Pipeline, error) {
@@ -33,32 +52,40 @@ func NewPipelineFromConfigPath(configPath string) (*Pipeline, error) {
 }
 
 func NewPipeline(basePath string, jsonStr []byte) (*Pipeline, error) {
-	var q Pipeline
-	err := json.Unmarshal(jsonStr, &q)
+	var pipe Pipeline
+	err := json.Unmarshal(jsonStr, &pipe)
 	if err != nil {
 		return nil, err
 	}
 
-	q.queuePath = basePath
+	pipe.queuePath = basePath
 
 	// load req
-	if q.ReqTmplName != "" {
-		b, err := ioutil.ReadFile(path.Join(q.queuePath, q.ReqTmplName))
+	if pipe.ReqTmplName != "" {
+		b, err := ioutil.ReadFile(path.Join(pipe.queuePath, pipe.ReqTmplName))
 		if err != nil {
 			return nil, err
 		}
-		q.reqTmplString = string(b)
+		pipe.reqTmplString = string(b)
 	}
 	// load res
-	if q.ResTmplName != "" {
-		b, err := ioutil.ReadFile(path.Join(q.queuePath, q.ResTmplName))
+	if pipe.ResTmplName != "" {
+		b, err := ioutil.ReadFile(path.Join(pipe.queuePath, pipe.ResTmplName))
 		if err != nil {
 			return nil, err
 		}
-		q.resTmplString = string(b)
+		pipe.resTmplString = string(b)
 	}
 
-	return &q, nil
+	if pipe.OutputPath == "" {
+		return nil, errors.New("OutputPath is required")
+	}
+
+	if pipe.UniqueKey == "" {
+		return nil, errors.New("UniqueKey is required")
+	}
+
+	return &pipe, nil
 }
 func (pipe *Pipeline) IsActive(t time.Time) bool {
 	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow) // 분단위 cron
@@ -88,7 +115,7 @@ func (pipe *Pipeline) ResTmpl() (*template.Template, error) {
 	return t, nil
 }
 func (pipe *Pipeline) WantToTake() int {
-	return int(float64(pipe.TakePerTick) * pipe.Correction)
+	return pipe.TakePerTick
 }
 func (pipe *Pipeline) Take() [][]byte {
 	var gTaken = make([][]byte, 0)
@@ -96,7 +123,7 @@ func (pipe *Pipeline) Take() [][]byte {
 	for want > 0 {
 		queue, err := OfferFileQueue(pipe.queuePath)
 		if err != nil {
-			log.Println("no more data.", err)
+			logrus.WithFields(logrus.Fields{"ctx": "queue/Pipeline.Take", "path": pipe.queuePath}).Debug("no more data.", err)
 			break
 		}
 

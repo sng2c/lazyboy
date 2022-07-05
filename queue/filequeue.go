@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"errors"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"io"
 	"os"
 	"path"
@@ -24,7 +24,10 @@ type FileQueuePos struct {
 var ErrNoData = errors.New("no more data")
 
 func NewFileQueue(queuePath, queueName string) (*FileQueue, error) {
-	subq := FileQueue{
+
+	fqPath := path.Join(queuePath, queueName)
+	logger := logrus.WithFields(logrus.Fields{"ctx": "NewFileQueue", "path": fqPath})
+	fq := FileQueue{
 		QueuePath:     queuePath,
 		FileQueueName: queueName,
 		Pos: FileQueuePos{
@@ -33,33 +36,32 @@ func NewFileQueue(queuePath, queueName string) (*FileQueue, error) {
 		},
 	}
 
-	subqPath := path.Join(subq.QueuePath, subq.FileQueueName)
-	_, err := os.Stat(subqPath)
+	_, err := os.Stat(fqPath)
 	if err != nil {
 		return nil, err
 	}
 
 	// Init pos
-	posPath := path.Join(subq.QueuePath, subq.FileQueueName+".pos")
+	posPath := path.Join(fq.QueuePath, fq.FileQueueName+".pos")
 	posData, err := os.ReadFile(posPath)
 	if os.IsNotExist(err) {
-		log.Println("Use default Pos. " + err.Error())
-		err := subq.SyncPos()
+		logger.Debugf("Use default Pos. %v", err)
+		err := fq.SyncPos()
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		err = json.Unmarshal(posData, &subq.Pos)
+		err = json.Unmarshal(posData, &fq.Pos)
 		if err != nil {
-			log.Println("Use default Pos. " + err.Error())
-			err := subq.SyncPos()
+			logger.Debugf("Use default Pos. %v", err)
+			err := fq.SyncPos()
 			if err != nil {
 				return nil, err
 			}
 		}
 	}
 
-	return &subq, nil
+	return &fq, nil
 }
 
 func (fq *FileQueue) IsEOF() bool {
@@ -85,6 +87,7 @@ func (fq *FileQueue) SyncPos() error {
 }
 
 func (fq *FileQueue) Take(n int) [][]byte {
+	logger := logrus.WithFields(logrus.Fields{"ctx": "queue/FileQueue.Take", "path": path.Join(fq.QueuePath, fq.FileQueueName)})
 	file, err := os.OpenFile(path.Join(fq.QueuePath, fq.FileQueueName), os.O_RDONLY, 0)
 	if err != nil {
 		fq.Pos.LastError = err.Error()
@@ -102,10 +105,10 @@ func (fq *FileQueue) Take(n int) [][]byte {
 
 	// Take후에는 반드시 싱크
 	defer func(q *FileQueue) {
-		log.Println("Sync", fq)
+		logger.Debug("Sync", fq)
 		err := q.SyncPos()
 		if err != nil {
-			log.Println(err)
+			logger.Debug(err)
 		}
 	}(fq)
 
@@ -115,10 +118,10 @@ func (fq *FileQueue) Take(n int) [][]byte {
 		if err != nil {
 
 			if errors.Is(io.EOF, err) { // err이 있더라도 bytes는 채워져있음
-				log.Println("Take EOF")
+				logger.Debug("Take EOF")
 			} else {
 				fq.Pos.LastError = err.Error()
-				log.Println(err)
+				logger.Debug(err)
 				return nil
 			}
 		}
@@ -142,6 +145,7 @@ func (fq *FileQueue) Take(n int) [][]byte {
 }
 
 func OfferFileQueue(queuePath string) (*FileQueue, error) {
+	logger := logrus.WithField("path", queuePath)
 	dirs, err := os.ReadDir(queuePath)
 	if err != nil {
 		return nil, err
@@ -156,20 +160,20 @@ func OfferFileQueue(queuePath string) (*FileQueue, error) {
 			continue
 		}
 		// 정합성 체크를 여기서 끝낸다.
-		subq, err := NewFileQueue(queuePath, d.Name())
+		fq, err := NewFileQueue(queuePath, d.Name())
 		if err != nil {
-			log.Println("Skip by Error", err)
+			logger.Debug("Skip by Error", err)
 			continue
 		}
-		if subq.Pos.LastError != "" {
-			log.Println("Skip by LastError", subq.Pos.LastError)
+		if fq.Pos.LastError != "" {
+			logger.Debug("Skip by LastError", fq.Pos.LastError)
 			continue
 		}
-		if subq.IsEOF() {
-			log.Println("Skip by EOF")
+		if fq.IsEOF() {
+			logger.WithField("dir", d.Name()).Debug("Skip by EOF")
 			continue
 		}
-		targets = append(targets, subq)
+		targets = append(targets, fq)
 	}
 	// os.ReadDir 에서 이미 정렬이 되어있어서 정렬코드 생략.
 	//sort.SliceStable(targets, func(i, j int) bool {

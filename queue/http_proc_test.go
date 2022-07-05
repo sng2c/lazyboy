@@ -2,6 +2,7 @@ package queue
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"net/http"
 	"reflect"
@@ -72,7 +73,7 @@ func TestBuildHttpRequest(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.args.req.BuildHttpRequest()
+			got, err := tt.args.req.BuildHttpRequest(context.Background())
 			if (err != nil) != tt.wantErr {
 				t.Errorf("BuildHttpRequest() error = %v, wantErr %v", err, tt.wantErr)
 				return

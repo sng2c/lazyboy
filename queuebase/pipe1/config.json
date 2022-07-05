@@ -1,9 +1,10 @@
 {
-  "TakePerTick": 1,
+  "TakePerTick": 6,
   "Correction": 1.0,
   "ActiveTime": "* * * * *",
   "ReqTmplName": "req",
   "ReSTmplName": "res",
-  "OutputPath" : "./out.log",
-  "UniqueKey" : "$.uuid"
+  "UniqueKey": "$.uuid",
+  "OutputPath": "out.log",
+  "Workers": 2
 }

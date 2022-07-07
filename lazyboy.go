@@ -211,6 +211,10 @@ SELECT:
 }
 
 func main() {
+
+	// TODO line truncation 할것
+	// TODO Logrotate
+
 	var queueBaseDir string
 	flag.StringVar(&queueBaseDir, "d", "queuebase", "Queue base directory")
 	flag.Parse()

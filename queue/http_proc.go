@@ -89,7 +89,7 @@ func NewResFromHttpResponse(response *http.Response, forcedBodyType BodyType) (*
 	contType := response.Header.Get("Content-type")
 
 	switch {
-	case contType == "application/json":
+	case strings.HasPrefix(contType, "application/json"):
 		res.BodyType = BodyTypeJson
 	case strings.HasPrefix(contType, "text/"):
 		res.BodyType = BodyTypeText

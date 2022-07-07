@@ -3,8 +3,8 @@
   "Correction": 1.0,
   "ActiveTime": "* * * * *",
   "ReqTmplName": "req",
-  "ReSTmplName": "res",
+  "ResTmplName": "res",
   "UniqueKey": "$.uuid",
   "OutputPath": "out.log",
-  "Workers": 2
+  "Workers": 10
 }

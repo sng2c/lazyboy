@@ -113,12 +113,13 @@ func (fq *FileQueue) Take(n int) [][]byte {
 	}(fq)
 
 	var hasRead int64
+	var hasEOF bool
 	for i := 0; i < n; i++ {
 		bytes, err := rd.ReadBytes('\n')
 		if err != nil {
-
 			if errors.Is(io.EOF, err) { // err이 있더라도 bytes는 채워져있음
 				logger.Debug("Take EOF")
+				hasEOF = true
 			} else {
 				fq.Pos.LastError = err.Error()
 				logger.Debug(err)
@@ -126,6 +127,7 @@ func (fq *FileQueue) Take(n int) [][]byte {
 			}
 		}
 		hasRead += int64(len(bytes))
+
 		if len(bytes) > 0 && bytes[len(bytes)-1] == '\n' {
 			bytes = bytes[:len(bytes)-1]
 		}
@@ -135,7 +137,7 @@ func (fq *FileQueue) Take(n int) [][]byte {
 		if len(bytes) > 0 {
 			taken = append(taken, bytes)
 		}
-		if fq.Pos.LastError != "" {
+		if hasEOF {
 			break
 		}
 	}

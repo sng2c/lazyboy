@@ -11,6 +11,11 @@ var testBase string
 
 func TestMain(m *testing.M) {
 	//setup()
+	log.SetLevel(log.DebugLevel)
+	log.SetFormatter(&log.TextFormatter{
+		ForceColors: true,
+	})
+	//log.SetReportCaller(true)
 
 	os.RemoveAll("../sandbox")
 	os.Mkdir("../sandbox", 0755)

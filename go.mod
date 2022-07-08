@@ -1,6 +1,6 @@
 module lazyboy
 
-go 1.17
+go 1.18
 
 require (
 	github.com/PaesslerAG/gval v1.0.0
@@ -13,6 +13,6 @@ require (
 )
 
 require (
-	golang.org/x/sys v0.0.0-20210423082822-04245dca01da // indirect
+	golang.org/x/sys v0.0.0-20220704084225-05e143d24a9e // indirect
 	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
 )

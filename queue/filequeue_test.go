@@ -123,7 +123,7 @@ func TestFileQueue_Take(t *testing.T) {
 				QueuePath:    path.Join(testBase, "filequeue_take_test1"),
 				SubQueueName: "data3.jsonl",
 			},
-			args: args{3},
+			args: args{5},
 			want: [][]byte{
 				[]byte("0"),
 				[]byte("1"),
